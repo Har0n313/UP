@@ -32,6 +32,7 @@ export interface City {
     Category_ID: number;
   }
   
+  
   export interface ShopOfProduct {
     Shop_ID: number;
     Product_ID: number;

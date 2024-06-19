@@ -1,4 +1,3 @@
-// navigation.tsx
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -7,7 +6,8 @@ import ProductsScreen from './screens/ProductsScreen';
 
 export type RootStackParamList = {
   StoreSelection: undefined;
-  Products: { store: string };
+  Products: { store: string; storeId: number };
+  Stores: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -24,3 +24,4 @@ const AppNavigator: React.FC = () => {
 };
 
 export default AppNavigator;
+
