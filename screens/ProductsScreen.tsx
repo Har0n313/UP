@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext } from "react";
 import {
   View,
   Text,
@@ -8,109 +8,60 @@ import {
   TouchableOpacity,
   Modal,
   Button,
-} from 'react-native';
-import { RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation'; 
-import { Product, ShopOfProduct } from '../types'; 
+} from "react-native";
+import { RouteProp } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { RootStackParamList } from "../navigation";
+import useProductsController from "../Controllers/ProductsController";
+import { Product } from "../types";
+import { AuthContext } from "../contexts/AuthContext";
 
-type ProductsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Products'>;
-type ProductsScreenRouteProp = RouteProp<RootStackParamList, 'Products'>;
+type ProductsScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  "Products"
+>;
+type ProductsScreenRouteProp = RouteProp<RootStackParamList, "Products">;
 
 type Props = {
   navigation: ProductsScreenNavigationProp;
   route: ProductsScreenRouteProp;
 };
 
-const mockProducts: Product[] = [
-  { Product_ID: 1, Name: 'Картошка', Price: 10, Category_ID: 1 },
-  { Product_ID: 2, Name: 'Помидоры', Price: 20, Category_ID: 1 },
-  { Product_ID: 3, Name: 'Огурцы', Price: 9, Category_ID: 1 },
-  { Product_ID: 4, Name: 'Картон', Price: 11, Category_ID: 1 },
-  { Product_ID: 5, Name: 'Кастрюля', Price: 100, Category_ID: 1 },
-  { Product_ID: 6, Name: 'Половник', Price: 40, Category_ID: 1 },
-  { Product_ID: 7, Name: 'Капуста', Price: 12, Category_ID: 1 },
-];
-const mockShopOfProducts: ShopOfProduct[] = [
-  { Shop_ID: 1, Product_ID: 1 },
-  { Shop_ID: 1, Product_ID: 2 },
-  { Shop_ID: 1, Product_ID: 3 },
-  { Shop_ID: 2, Product_ID: 4 },
-  { Shop_ID: 2, Product_ID: 5 },
-  { Shop_ID: 2, Product_ID: 6 },
-  { Shop_ID: 3, Product_ID: 7 },
-];
-
 const ProductsScreen: React.FC<Props> = ({ route }) => {
   const { store, storeId } = route.params;
-  const [products, setProducts] = useState<Product[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [newProductName, setNewProductName] = useState<string>('');
-  const [newProductPrice, setNewProductPrice] = useState<string>('');
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const {
+    products,
+    searchQuery,
+    setSearchQuery,
+    filteredProducts,
+    modalVisible,
+    setModalVisible,
+    newProductName,
+    setNewProductName,
+    newProductPrice,
+    setNewProductPrice,
+    editingProduct,
+    setEditingProduct,
+    handleAddProduct,
+    handlePriceChange,
+  } = useProductsController(storeId);
 
-  useEffect(() => {
-    const storeProducts = mockShopOfProducts
-      .filter(shopProduct => shopProduct.Shop_ID === storeId)
-      .map(shopProduct => mockProducts.find(product => product.Product_ID === shopProduct.Product_ID))
-      .filter((product): product is Product => product !== undefined);
-
-    setProducts(storeProducts);
-    setFilteredProducts(storeProducts);
-  }, [storeId]);
-
-  useEffect(() => {
-    if (searchQuery === '') {
-      setFilteredProducts(products);
-    } else {
-      setFilteredProducts(
-        products.filter(product =>
-          product.Name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      );
-    }
-  }, [searchQuery, products]);
-
-  const handleAddProduct = () => {
-    if (newProductName && newProductPrice) {
-      const newProduct: Product = {
-        Product_ID: products.length + 1,
-        Name: newProductName,
-        Price: parseFloat(newProductPrice),
-        Category_ID: 1,
-      };
-      setProducts([...products, newProduct]);
-      setFilteredProducts([...products, newProduct]);
-      setModalVisible(false);
-      setNewProductName('');
-      setNewProductPrice('');
-    }
-  };
-
-  const handlePriceChange = () => {
-    if (editingProduct && newProductPrice) {
-      const updatedProducts = products.map(product =>
-        product.Product_ID === editingProduct.Product_ID
-          ? { ...product, Price: parseFloat(newProductPrice) }
-          : product
-      );
-      setProducts(updatedProducts);
-      setFilteredProducts(updatedProducts);
-      setModalVisible(false);
-      setEditingProduct(null);
-      setNewProductPrice('');
-    }
-  };
+  const { isLoggedIn } = useContext(AuthContext);
 
   const renderItem = ({ item }: { item: Product }) => (
     <View style={styles.productItem}>
-      <Text>{item.Name}</Text>
-      <Text>{item.Price}</Text>
-      <TouchableOpacity onPress={() => { setEditingProduct(item); setModalVisible(true); }}>
-        <Text style={styles.changePriceButtonText}>Изменить</Text>
-      </TouchableOpacity>
+      <Text>{item.name}</Text>
+      <Text>{item.price}</Text>
+      {isLoggedIn && (
+        <TouchableOpacity
+          onPress={() => {
+            setEditingProduct(item);
+            setModalVisible(true);
+          }}
+        >
+          <Text style={styles.changePriceButtonText}>Изменить</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -122,102 +73,104 @@ const ProductsScreen: React.FC<Props> = ({ route }) => {
         value={searchQuery}
         onChangeText={setSearchQuery}
       />
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => { setEditingProduct(null); setModalVisible(true); }}
-      >
-        <Text style={styles.addButtonText}>Добавить товар</Text>
-      </TouchableOpacity>
+      {isLoggedIn && (
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => {
+            setEditingProduct(null);
+            setModalVisible(true);
+          }}
+        >
+          <Text style={styles.addButtonText}>Добавить товар</Text>
+        </TouchableOpacity>
+      )}
       <FlatList
         data={filteredProducts}
         renderItem={renderItem}
-        keyExtractor={(item) => item.Product_ID.toString()}
+        keyExtractor={(item) => item.id}
         ListHeaderComponent={<Text>Товары в магазине {store}:</Text>}
       />
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalView}>
-          <Text style={styles.modalText}>{editingProduct ? 'Изменить цену товара' : 'Добавить новый товар'}</Text>
-          {!editingProduct && (
+      {isLoggedIn && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>
+              {editingProduct ? "Изменить цену товара" : "Добавить новый товар"}
+            </Text>
+            {!editingProduct && (
+              <TextInput
+                style={styles.input}
+                placeholder="Название товара"
+                value={newProductName}
+                onChangeText={setNewProductName}
+              />
+            )}
             <TextInput
               style={styles.input}
-              placeholder="Название товара"
-              value={newProductName}
-              onChangeText={setNewProductName}
+              placeholder="Цена товара"
+              value={newProductPrice}
+              onChangeText={setNewProductPrice}
+              keyboardType="numeric"
             />
-          )}
-          <TextInput
-            style={styles.input}
-            placeholder="Цена товара"
-            value={newProductPrice}
-            onChangeText={setNewProductPrice}
-            keyboardType="numeric"
-          />
-          <View style={styles.modalButtons}>
-            <Button title="Отмена" onPress={() => setModalVisible(false)} />
-            <Button title={editingProduct ? 'Изменить' : 'Добавить'} onPress={editingProduct ? handlePriceChange : handleAddProduct} />
+            <View style={styles.modalButtons}>
+              <Button title="Отмена" onPress={() => setModalVisible(false)} />
+              <Button
+                title={editingProduct ? "Изменить" : "Добавить"}
+                onPress={editingProduct ? handlePriceChange : handleAddProduct}
+              />
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </View>
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
+    padding: 16,
   },
   searchInput: {
     height: 40,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: 12,
     paddingHorizontal: 8,
     borderRadius: 5,
   },
   addButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#007bff",
     padding: 10,
     borderRadius: 5,
-    alignItems: 'center',
-    marginBottom: 10,
+    alignItems: "center",
+    marginBottom: 20,
   },
   addButtonText: {
-    color: 'white',
-    fontSize: 18,
+    color: "white",
+    fontWeight: "bold",
   },
   productItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomColor: '#ccc',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 10,
     borderBottomWidth: 1,
-  },
-  productInfo: {
-    flex: 1,
-  },
-  changePriceButton: {
-    backgroundColor: '#FF6347',
-    padding: 5,
-    borderRadius: 5,
+    borderBottomColor: "#ccc",
   },
   changePriceButtonText: {
-    color: 'black',
+    color: "#007bff",
   },
   modalView: {
     margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
+    backgroundColor: "white",
+    borderRadius: 20,
     padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -228,22 +181,21 @@ const styles = StyleSheet.create({
   },
   modalText: {
     marginBottom: 15,
-    textAlign: 'center',
-    fontSize: 18,
+    textAlign: "center",
   },
   input: {
     height: 40,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: 12,
     paddingHorizontal: 8,
-    width: '100%',
     borderRadius: 5,
+    width: "100%",
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
 });
 
